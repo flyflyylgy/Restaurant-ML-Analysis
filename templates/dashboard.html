@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>睡眠与学业压力分析大屏</title>
+    <script type="text/javascript" src="https://assets.pyecharts.org/assets/v5/echarts.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: "Microsoft YaHei", sans-serif;
+            background-color: #f0f2f5;
+        }
+        .dashboard {
+            width: 100%;
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 25px;
+            background: linear-gradient(135deg, #1e5799, #207cca);
+            color: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 36px;
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .header p {
+            margin: 15px 0 0;
+            font-size: 18px;
+            opacity: 0.9;
+        }
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            margin: 0 -10px 20px;
+            gap: 20px;
+        }
+        .col {
+            flex: 1;
+            min-width: 400px;
+            padding: 0 10px;
+            margin-bottom: 20px;
+        }
+        .chart-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            height: 500px;
+            position: relative;
+        }
+        .chart-container::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: linear-gradient(90deg, #FF6F61, #FFD700);
+        }
+        .chart-title {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+            position: relative;
+            padding-bottom: 10px;
+        }
+        .chart-title::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 3px;
+            background: linear-gradient(90deg, #FF6F61, #FFD700);
+            border-radius: 3px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: #666;
+            font-size: 14px;
+            background: linear-gradient(135deg, rgba(30,87,153,0.1), rgba(32,124,202,0.1));
+            border-radius: 12px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 20px;
+            color: #666;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 300px;
+        }
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(30,87,153,0.2);
+            border-radius: 50%;
+            border-top-color: #1e5799;
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 20px;
+        }
+        .radar-chart,
+        .treemap-chart,
+        .heatmap-container {
+            width: 100%;
+            height: 100%;
+            min-height: 400px;
+        }
+        .heatmap-container {
+            display: flex;
+            justify-content: center;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <h1>睡眠与学业压力分析大屏</h1>
+            <p>基于印度城市学生数据的综合可视化分析</p>
+        </div>
+
+        <div id="loading" class="loading">
+            <div class="loading-spinner"></div>
+            <div>数据加载中，请稍候...</div>
+        </div>
+
+        <div id="dashboard-content" style="display: none;">
+            <div class="row">
+                <div class="col">
+                    <div class="chart-container">
+                        <div class="chart-title">睡眠时长小于5小时的前6个城市</div>
+                        <div id="sleep-less-5" style="width:100%; height:450px;"></div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="chart-container">
+                        <div class="chart-title">睡眠时长超过8小时的前6个城市</div>
+                        <div id="sleep-more-8" style="width:100%; height:450px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col">
+                    <div class="chart-container">
+                        <div class="chart-title">学业压力最高(5级)的前6个城市</div>
+                        <div id="stress-high" style="width:100%; height:450px;"></div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="chart-container">
+                        <div class="chart-title">学业压力最低(1级)的前6个城市</div>
+                        <div id="stress-low" style="width:100%; height:450px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col" style="flex: 2;">
+                    <div class="chart-container">
+                        <div class="chart-title">各年龄段不同性别的平均学业压力</div>
+                        <div id="stress-by-age-gender" style="width:100%; height:450px;"></div>
+                    </div>
+                </div>
+            </div>
+             <div class="row">
+                <div class="col">
+                    <div class="chart-container">
+                        <div class="chart-title">睡眠时长小于5小时的前6个城市</div>
+                        <div id="pressure-satisfaction" style="width:100%; height:450px;"></div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="chart-container">
+                        <div class="chart-title">睡眠时长超过8小时的前6个城市</div>
+                        <div id="diet-pressure" style="width:100%; height:450px;"></div>
+                    </div>
+                </div>
+            </div>
+       <!-- 新增学位雷达图容器 -->
+            <div class="row">
+                <div class="col">
+                    <div class="chart-container">
+                        <div class="chart-title">不同学位的学术表现雷达图</div>
+                        <div id="avg_gpa_by_degree" class="radar-chart"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 新增特征树状图容器 -->
+            <div class="row">
+                <div class="col">
+                    <div class="chart-container">
+                        <div class="chart-title">有自杀念头人群特征分布</div>
+                        <div id="features_with_suicidal_thoughts" class="treemap-chart"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 新增热力图容器 -->
+            <div class="row">
+                <div class="col">
+                    <div class="chart-container">
+                        <div class="chart-title">压力与满意度热力图</div>
+                        <div id="heatmap-pressure-satisfaction" class="heatmap-container"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer">
+                <p>数据可视化分析大屏 © 2023 | 数据来源: 印度学生睡眠与压力调查</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 初始化图表变量
+        let chart1, chart2, chart3, chart4, chart5,  chart6, chart7,chart8, chart9, chart10;
+
+        // 从API获取数据并渲染图表
+        async function fetchDataAndRenderCharts() {
+            try {
+                // 并行获取所有数据
+                const [sleepData,
+                    stressHighData,
+                    stressLowData,
+                    ageGenderData,
+                    pressureSatisfactionData,
+                    dietPressureData,
+                    gpaDegreeData,
+                    suicidalFeaturesData,
+                    heatmapData
+                ] = await Promise.all([
+                    fetch('/api/sleep/data').then(res => res.json()),
+                    fetch('/api/stress/high').then(res => res.json()),
+                    fetch('/api/stress/low').then(res => res.json()),
+                    fetch('/api/age_gender/stress').then(res => res.json()),
+                    fetch('/api/pressure/satisfaction').then(res => res.json()),
+                    fetch('/api/diet/pressure').then(res => res.json()),
+                    fetch('/api/avg_gpa_by_degree').then(res => res.json()),
+                    fetch('/api/features_with_suicidal_thoughts').then(res => res.json()),
+                    fetch('/api/stress_satisfaction_heatmap').then(res => res.json())
+                ]);
+
+                // 检查是否有错误
+                if (sleepData.error || stressHighData.error || stressLowData.error || ageGenderData.error|| pressureSatisfactionData.error || dietPressureData.error || gpaDegreeData.error || suicidalFeaturesData.error || heatmapData.error) {
+                    throw new Error('API请求失败');
+                }
+
+                // 隐藏加载提示，显示内容
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('dashboard-content').style.display = 'block';
+
+                // 初始化图表
+                initCharts({
+                    sleepLess5: sleepData.less5,
+                    sleepMore8: sleepData.over8,
+                    stressHigh: stressHighData,
+                    stressLow: stressLowData,
+                    stressByAgeGender: ageGenderData,
+                    pressureSatisfaction: pressureSatisfactionData,
+                    dietPressure: dietPressureData,
+                    gpaDegree: gpaDegreeData,
+                    suicidalFeatures: suicidalFeaturesData,
+                    heatmapData: heatmapData
+                });
+
+            } catch (error) {
+                console.error('获取数据失败:', error);
+                document.getElementById('loading').innerHTML = `
+                    <div style="color: #EE6666; font-size: 24px; margin-bottom: 10px;">⚠️</div>
+                    <div>数据加载失败，请刷新重试</div>
+                    <button onclick="window.location.reload()" style="margin-top: 15px; padding: 8px 16px; background: linear-gradient(135deg, #1e5799, #207cca); color: white; border: none; border-radius: 20px; cursor: pointer;">刷新页面</button>
+                `;
+            }
+        }
+
+        // 初始化图表函数
+        function initCharts(data) {
+            // 睡眠时长小于5小时的城市
+            chart1 = echarts.init(document.getElementById('sleep-less-5'));
+            chart1.setOption({
+                "animation": true,
+                "animationDuration": 1500,
+                "color": ["#FF6F61"],
+                "grid": {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                "series": [{
+                    "type": "bar",
+                    "name": "小于5小时的总人数",
+                    "data": data.sleepLess5.counts,
+                    "itemStyle": {
+                        "color": new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            {offset: 0, color: '#FF6F61'},
+                            {offset: 1, color: '#FFD700'}
+                        ]),
+                        "borderRadius": [6, 6, 0, 0],
+                        "shadowColor": 'rgba(255,111,97,0.3)',
+                        "shadowBlur": 10,
+                        "shadowOffsetY": 5
+                    },
+                    "label": {
+                        "show": true,
+                        "position": "top",
+                        "color": "#FF6F61",
+                        "fontWeight": "bold"
+                    },
+                    "barWidth": "40%"
+                }],
+                "legend": {
+                    "show": true,
+                    "data": ['小于5小时的总人数']
+                },
+                "tooltip": {
+                    "show": true,
+                    "trigger": "axis",
+                    "axisPointer": {
+                        "type": "shadow"
+                    }
+                },
+                "xAxis": [{
+                    "name": "城市",
+                    "data": data.sleepLess5.cities,
+                    "axisLabel": {
+                        "rotate": -15
+                    }
+                }],
+                "yAxis": [{"name": "人数"}]
+            });
+
+            // 睡眠时长超过8小时的城市
+            chart2 = echarts.init(document.getElementById('sleep-more-8'));
+            chart2.setOption({
+                "animation": true,
+                "animationDuration": 1500,
+                "color": ["#6A5ACD"],
+                "grid": {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                "series": [{
+                    "type": "bar",
+                    "name": "超过8小时的总人数",
+                    "data": data.sleepMore8.counts,
+                    "itemStyle": {
+                        "color": new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            {offset: 0, color: '#6A5ACD'},
+                            {offset: 1, color: '#9370DB'}
+                        ]),
+                        "borderRadius": [6, 6, 0, 0],
+                        "shadowColor": 'rgba(106,90,205,0.3)',
+                        "shadowBlur": 10,
+                        "shadowOffsetY": 5
+                    },
+                    "label": {
+                        "show": true,
+                        "position": "top",
+                        "color": "#6A5ACD",
+                        "fontWeight": "bold"
+                    },
+                    "barWidth": "40%"
+                }],
+                "legend": {
+                    "show": true,
+                    "data": ['超过8小时的总人数']
+                },
+                "tooltip": {
+                    "show": true,
+                    "trigger": "axis",
+                    "axisPointer": {
+                        "type": "shadow"
+                    }
+                },
+                "xAxis": [{
+                    "name": "城市",
+                    "data": data.sleepMore8.cities,
+                    "axisLabel": {
+                        "rotate": -15
+                    }
+                }],
+                "yAxis": [{"name": "人数"}]
+            });
+
+            // 学业压力最高(5级)的城市
+            chart3 = echarts.init(document.getElementById('stress-high'));
+            chart3.setOption({
+                "animation": true,
+                "animationDuration": 1500,
+                "grid": {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                "series": [{
+                    "type": "bar",
+                    "name": "压力为5的总人数",
+                    "data": data.stressHigh.counts,
+                    "itemStyle": {
+                        "color": new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            {offset: 0, color: '#EE6666'},
+                            {offset: 1, color: '#FF8C8C'}
+                        ]),
+                        "borderRadius": [6, 6, 0, 0],
+                        "shadowColor": 'rgba(238,102,102,0.3)',
+                        "shadowBlur": 10,
+                        "shadowOffsetY": 5
+                    },
+                    "label": {
+                        "show": true,
+                        "position": "top",
+                        "color": "#EE6666",
+                        "fontWeight": "bold"
+                    },
+                    "barWidth": "40%"
+                }],
+                "legend": {
+                    "show": false
+                },
+                "tooltip": {
+                    "show": true,
+                    "trigger": "axis",
+                    "axisPointer": {
+                        "type": "shadow"
+                    }
+                },
+                "xAxis": [{
+                    "name": "城市",
+                    "data": data.stressHigh.cities,
+                    "axisLabel": {
+                        "rotate": -15
+                    }
+                }],
+                "yAxis": [{"name": "人数"}]
+            });
+
+            // 学业压力最低(1级)的城市
+            chart4 = echarts.init(document.getElementById('stress-low'));
+            chart4.setOption({
+                "animation": true,
+                "animationDuration": 1500,
+                "grid": {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                "series": [{
+                    "type": "bar",
+                    "name": "压力为1的总人数",
+                    "data": data.stressLow.counts,
+                    "itemStyle": {
+                        "color": new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            {offset: 0, color: '#91CC75'},
+                            {offset: 1, color: '#A8E6A8'}
+                        ]),
+                        "borderRadius": [6, 6, 0, 0],
+                        "shadowColor": 'rgba(145,204,117,0.3)',
+                        "shadowBlur": 10,
+                        "shadowOffsetY": 5
+                    },
+                    "label": {
+                        "show": true,
+                        "position": "top",
+                        "color": "#91CC75",
+                        "fontWeight": "bold"
+                    },
+                    "barWidth": "40%"
+                }],
+                "legend": {
+                    "show": true,
+                    "data": ['压力为1的总人数']
+                },
+                "tooltip": {
+                    "show": true,
+                    "trigger": "axis",
+                    "axisPointer": {
+                        "type": "shadow"
+                    }
+                },
+                "xAxis": [{
+                    "name": "城市",
+                    "data": data.stressLow.cities,
+                    "axisLabel": {
+                        "rotate": -15
+                    }
+                }],
+                "yAxis": [{"name": "人数"}]
+            });
+
+            // 各年龄段不同性别的平均学业压力
+            chart5 = echarts.init(document.getElementById('stress-by-age-gender'));
+            chart5.setOption({
+                "animation": true,
+                "animationDuration": 1500,
+                "grid": {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                "series": [
+                    {
+                        "type": "bar",
+                        "name": "男",
+                        "data": data.stressByAgeGender.male,
+                        "itemStyle": {
+                            "color": new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                {offset: 0, color: '#5470C6'},
+                                {offset: 1, color: '#83A2FF'}
+                            ]),
+                            "borderRadius": [6, 6, 0, 0],
+                            "shadowColor": 'rgba(84,112,198,0.3)',
+                            "shadowBlur": 10,
+                            "shadowOffsetY": 5
+                        },
+                        "label": {
+                            "show": true,
+                            "position": "top",
+                            "color": "#5470C6",
+                            "fontWeight": "bold"
+                        },
+                        "barWidth": "35%"
+                    },
+                    {
+                        "type": "bar",
+                        "name": "女",
+                        "data": data.stressByAgeGender.female,
+                        "itemStyle": {
+                            "color": new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                {offset: 0, color: '#EA7CCC'},
+                                {offset: 1, color: '#FFB6E6'}
+                            ]),
+                            "borderRadius": [6, 6, 0, 0],
+                            "shadowColor": 'rgba(234,124,204,0.3)',
+                            "shadowBlur": 10,
+                            "shadowOffsetY": 5
+                        },
+                        "label": {
+                            "show": true,
+                            "position": "top",
+                            "color": "#EA7CCC",
+                            "fontWeight": "bold"
+                        },
+                        "barWidth": "35%"
+                    }
+                ],
+                "legend": {
+                    "show": true,
+                    "data": ['男', '女']
+                },
+                "tooltip": {
+                    "show": true,
+                    "trigger": "axis",
+                    "axisPointer": {
+                        "type": "shadow"
+                    }
+                },
+                "xAxis": [{
+                    "name": "年龄",
+                    "data": data.stressByAgeGender.ages
+                }],
+                "yAxis": [{"name": "平均学业压力"}]
+            });
+
+            const chart6 = echarts.init(document.getElementById('pressure-satisfaction'));
+            chart6.setOption({
+                title: {
+                    text: '学习满意度随学业压力的变化',
+                    left: 'center'
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    formatter: '学业压力: {b}<br/>平均学习满意度: {c}'
+                },
+                xAxis: {
+                    type: 'category',
+                    data: data.pressureSatisfaction.pressure_levels,
+                    name: '学业压力等级',
+                    axisLabel: {
+                        interval: 0
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '平均学习满意度',
+                    min: 1,
+                    max: 5
+                },
+                series: [{
+                    data: data.pressureSatisfaction.avg_satisfaction,
+                    type: 'line',
+                    smooth: true,
+                    symbol: 'circle',
+                    symbolSize: 10,
+                    lineStyle: {
+                        width: 4,
+                        color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                            {offset: 0, color: '#FF6F61'},
+                            {offset: 1, color: '#6A5ACD'}
+                        ])
+                    },
+                    itemStyle: {
+                        color: '#6A5ACD',
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    },
+                    areaStyle: {
+                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            {offset: 0, color: 'rgba(106,90,205,0.3)'},
+                            {offset: 1, color: 'rgba(106,90,205,0.1)'}
+                        ])
+                    }
+                }]
+            });
+
+            // 新增：饮食习惯与学业压力的关系图表
+            const chart7 = echarts.init(document.getElementById('diet-pressure'));
+            chart7.setOption({
+                title: {
+                    text: '不同饮食习惯的平均学业压力',
+                    left: 'center'
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    formatter: '饮食习惯: {b}<br/>平均学业压力: {c}'
+                },
+                xAxis: {
+                    type: 'category',
+                    data: data.dietPressure.diets,
+                    name: '饮食习惯',
+                    axisLabel: {
+                        interval: 0
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '平均学业压力',
+                    min: 1,
+                    max: 5
+                },
+                series: [{
+                    data: data.dietPressure.avg_pressure,
+                    type: 'line',
+                    smooth: true,
+                    symbol: 'diamond',
+                    symbolSize: 12,
+                    lineStyle: {
+                        width: 4,
+                        color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                            {offset: 0, color: '#91CC75'},
+                            {offset: 1, color: '#5470C6'}
+                        ])
+                    },
+                    itemStyle: {
+                        color: '#5470C6',
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    },
+                    areaStyle: {
+                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            {offset: 0, color: 'rgba(84,112,198,0.3)'},
+                            {offset: 1, color: 'rgba(84,112,198,0.1)'}
+                        ])
+                    }
+                }]
+            });
+            // 初始化新增图表
+             chart8 = initAvgGPAByDegreeChart(data.gpaDegree);
+            chart9 = initFeaturesTreemapChart(
+                processSuicidalFeaturesData(data.suicidalFeatures)
+            );
+            chart10 = initHeatmapChart(data.heatmapData);
+
+    // 初始化学位雷达图
+          function processSuicidalFeaturesData(rawData) {
+            return {
+                name: '高风险特征',
+                children: [
+                    {
+                        name: '学业压力',
+                        value: rawData.features.avg_stress || 0,
+                        children: [
+                            {name: '高压力(4-5)', value: rawData.features.high_stress_count || 0},
+                            {name: '中压力(2-3)', value: rawData.features.medium_stress_count || 0},
+                            {name: '低压力(1)', value: rawData.features.low_stress_count || 0}
+                        ]
+                    },
+                    {
+                        name: '睡眠问题',
+                        value: rawData.features.avg_sleep_issues || 0,
+                        children: [
+                            {name: '严重失眠', value: rawData.features.severe_insomnia || 0},
+                            {name: '偶尔失眠', value: rawData.features.occasional_insomnia || 0}
+                        ]
+                    }
+                ]
+            };
+        }
+
+        // 初始化学位雷达图
+        function initAvgGPAByDegreeChart(data) {
+            const chart = echarts.init(document.getElementById('avg_gpa_by_degree'));
+            const option = {
+                title: { text: '不同学位的学术表现', left: 'center' },
+                tooltip: { trigger: 'item' },
+                legend: {
+                    data: data.degrees,
+                    bottom: 10
+                },
+                radar: {
+                    indicator: [
+                        { name: '平均GPA', max: 4 },
+                        { name: '学业压力', max: 5 },
+                        { name: '学习满意度', max: 5 }
+                    ],
+                    radius: '65%'
+                },
+                series: [{
+                    type: 'radar',
+                    data: data.seriesData.map(item => ({
+                        ...item,
+                        areaStyle: { opacity: 0.3 }
+                    }))
+                }],
+                color: ['#FF6F61', '#6A5ACD', '#91CC75']
+            };
+            chart.setOption(option);
+            return chart;
+        }
+
+        // 初始化特征树状图
+        function initFeaturesTreemapChart(data) {
+            const chart = echarts.init(document.getElementById('features_with_suicidal_thoughts'));
+            const option = {
+                title: { text: '高风险人群特征分布', left: 'center' },
+                tooltip: {
+                    formatter: function(info) {
+                        return `${info.name}<br/>人数: ${info.value}`;
+                    }
+                },
+                series: [{
+                    type: 'treemap',
+                    data: data,
+                    breadcrumb: { show: true },
+                    label: { show: true }
+                }]
+            };
+            chart.setOption(option);
+            return chart;
+        }
+
+        // 初始化热力图
+        function initHeatmapChart(data) {
+            const chart = echarts.init(document.getElementById('heatmap-pressure-satisfaction'));
+            const option = {
+                title: { text: '压力与满意度关系', left: 'center' },
+                tooltip: { position: 'top' },
+                xAxis: {
+                    type: 'category',
+                    data: data.pressureLevels
+                },
+                yAxis: {
+                    type: 'category',
+                    data: data.satisfactionLevels
+                },
+                visualMap: {
+                    min: 0,
+                    max: data.maxCount,
+                    inRange: { color: ['#e0f3f8', '#313695'] }
+                },
+                series: [{
+                    type: 'heatmap',
+                    data: data.heatmapData,
+                    label: { show: true }
+                }]
+            };
+            chart.setOption(option);
+            return chart;
+        }
+
+
+            // 响应式调整
+            window.addEventListener('resize', function() {
+                [chart1, chart2, chart3, chart4, chart5, chart6, chart7, chart8, chart9, chart10]
+                .forEach(chart => chart && chart.resize());
+        });
+
+
+        }
+
+        // 页面加载完成后获取数据
+        document.addEventListener('DOMContentLoaded', fetchDataAndRenderCharts);
+    </script>
+</body>
+</html>

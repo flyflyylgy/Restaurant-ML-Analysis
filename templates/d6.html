@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>抑郁症相关因素分析可视化大屏</title>
+    <script type="text/javascript" src="https://assets.pyecharts.org/assets/v5/echarts.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: "Microsoft YaHei", sans-serif;
+            background-color: #f0f2f5;
+        }
+        .dashboard {
+            width: 100%;
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 25px;
+            background: linear-gradient(135deg, #1e5799, #207cca);
+            color: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 36px;
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .header p {
+            margin: 15px 0 0;
+            font-size: 18px;
+            opacity: 0.9;
+        }
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            margin: 0 -10px 20px;
+            gap: 20px;
+        }
+        .col {
+            flex: 1;
+            min-width: 400px;
+            padding: 0 10px;
+            margin-bottom: 20px;
+        }
+        .col-full {
+            flex: 0 0 100%;
+        }
+        .chart-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            height: 500px;
+            position: relative;
+        }
+        .chart-container-sm {
+            height: 400px;
+        }
+        .chart-container::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: linear-gradient(90deg, #FF6F61, #FFD700);
+        }
+        .chart-title {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+            position: relative;
+            padding-bottom: 10px;
+        }
+        .chart-title::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 3px;
+            background: linear-gradient(90deg, #FF6F61, #FFD700);
+            border-radius: 3px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: #666;
+            font-size: 14px;
+            background: linear-gradient(135deg, rgba(30,87,153,0.1), rgba(32,124,202,0.1));
+            border-radius: 12px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 20px;
+            color: #666;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 300px;
+        }
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(30,87,153,0.2);
+            border-radius: 50%;
+            border-top-color: #1e5799;
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 20px;
+        }
+        .info-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .info-card h3 {
+            margin-top: 0;
+            color: #1e5799;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .correlation-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .correlation-table th, .correlation-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        .correlation-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        .correlation-table tr:hover {
+            background-color: #f5f5f5;
+        }
+        .highlight {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <h1>抑郁症相关因素分析可视化大屏</h1>
+            <p>基于印度城市学生数据的抑郁症风险因素综合分析</p>
+        </div>
+
+        <div id="loading" class="loading">
+            <div class="loading-spinner"></div>
+            <div>数据加载中，请稍候...</div>
+        </div>
+
+        <div id="dashboard-content" style="display: none;">
+            <!-- 概览信息 -->
+            <div class="row">
+                <div class="col">
+                    <div class="info-card">
+                        <h3>抑郁症总体情况</h3>
+                        <div id="depression-rate" style="font-size: 24px; text-align: center; padding: 20px;"></div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="info-card">
+                        <h3>性别差异</h3>
+                        <div id="gender-rate" style="height: 120px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 相关性分析 -->
+            <div class="row">
+                <div class="col-full">
+                    <div class="chart-container">
+                        <div class="chart-title">抑郁症与各因素相关性分析</div>
+                        <div id="correlation-analysis" style="width:100%; height:450px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 高风险群体分析 -->
+            <div class="row">
+                <div class="col">
+                    <div class="chart-container chart-container-sm">
+                        <div class="chart-title">高风险群体抑郁症比例</div>
+                        <div id="high-risk-groups" style="width:100%; height:350px;"></div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="chart-container chart-container-sm">
+                        <div class="chart-title">多因素组合风险分析</div>
+                        <div id="combo-analysis" style="width:100%; height:350px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 新增: 风险因素趋势分析 -->
+            <div class="row">
+                <div class="col-full">
+                    <div class="chart-container">
+                        <div class="chart-title">抑郁症风险因素趋势分析</div>
+                        <div id="factor-trend-analysis" style="width:100%; height:450px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 详细相关性表格 -->
+            <div class="row">
+                <div class="col-full">
+                    <div class="info-card">
+                        <h3>详细相关性分析</h3>
+                        <table class="correlation-table" id="correlation-table">
+                            <thead>
+                                <tr>
+                                    <th>因素</th>
+                                    <th>相关性系数</th>
+                                    <th>解释说明</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 地理和年龄分布 -->
+            <div class="row">
+                <div class="col">
+                    <div class="chart-container">
+                        <div class="chart-title">抑郁症比例最高的10个城市</div>
+                        <div id="city-depression" style="width:100%; height:450px;"></div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="chart-container">
+                        <div class="chart-title">不同年龄段抑郁症比例</div>
+                        <div id="age-depression" style="width:100%; height:450px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer">
+                <p>数据可视化分析大屏 © 2023 | 数据来源: 印度学生睡眠与压力调查</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 初始化图表变量
+        let charts = [];
+
+        // 从API获取数据并渲染图表
+        async function fetchDataAndRenderCharts() {
+            try {
+                // 获取抑郁症数据
+                const depressionData = await fetch('/api/depression/data').then(res => res.json());
+
+                // 检查是否有错误
+                if (depressionData.error) {
+                    throw new Error('API请求失败');
+                }
+
+                // 隐藏加载提示，显示内容
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('dashboard-content').style.display = 'block';
+
+                // 渲染概览信息
+                renderOverview(depressionData);
+                
+                // 初始化图表
+                initCharts(depressionData);
+
+            } catch (error) {
+                console.error('获取数据失败:', error);
+                document.getElementById('loading').innerHTML = `
+                    <div style="color: #EE6666; font-size: 24px; margin-bottom: 10px;">⚠️</div>
+                    <div>数据加载失败，请刷新重试</div>
+                    <button onclick="window.location.reload()" style="margin-top: 15px; padding: 8px 16px; background: linear-gradient(135deg, #1e5799, #207cca); color: white; border: none; border-radius: 20px; cursor: pointer;">刷新页面</button>
+                `;
+            }
+        }
+
+        // 渲染概览信息
+        function renderOverview(data) {
+            // 总体抑郁症比例
+            const rate = (data.depression_rate * 100).toFixed(1);
+            document.getElementById('depression-rate').innerHTML = `
+                <div style="font-size: 48px; color: #e74c3c; font-weight: bold;">${rate}%</div>
+                <div style="font-size: 16px; color: #666;">调查人群中患有抑郁症的比例</div>
+            `;
+            
+            // 性别差异
+            const genderHtml = Object.entries(data.depression_by_gender).map(([gender, rate]) => {
+                const percent = (rate * 100).toFixed(1);
+                return `
+                    <div style="margin-bottom: 10px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <span>${gender}:</span>
+                            <span style="font-weight: bold; color: #e74c3c;">${percent}%</span>
+                        </div>
+                        <div style="height: 10px; background: #eee; border-radius: 5px;">
+                            <div style="width: ${percent}%; height: 100%; background: linear-gradient(90deg, #1e5799, #207cca); border-radius: 5px;"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            document.getElementById('gender-rate').innerHTML = genderHtml;
+        }
+
+        // 初始化图表函数
+        function initCharts(data) {
+            // 1. 相关性分析雷达图
+            const correlationChart = echarts.init(document.getElementById('correlation-analysis'));
+            
+            // 准备雷达图数据
+            const factors = Object.keys(data.correlations);
+            const indicator = factors.map(factor => {
+                let maxVal = 0;
+                const corr = data.correlations[factor];
+                
+                if (typeof corr === 'object') {
+                    // 对于分类变量，取最大绝对值
+                    maxVal = Math.max(...Object.values(corr).map(Math.abs));
+                } else {
+                    maxVal = Math.abs(corr);
+                }
+                
+                return {
+                    name: factor,
+                    max: Math.min(1, Math.max(0.5, maxVal * 1.5)) // 动态调整最大值
+                };
+            });
+            
+            // 准备系列数据
+            const seriesData = factors.map(factor => {
+                const corr = data.correlations[factor];
+                let value;
+                
+                if (typeof corr === 'object') {
+                    // 对于分类变量，取最大绝对值
+                    value = Math.max(...Object.values(corr).map(Math.abs));
+                } else {
+                    value = Math.abs(corr);
+                }
+                
+                return value;
+            });
+            
+            const correlationOption = {
+                tooltip: {
+                    trigger: 'item'
+                },
+                radar: {
+                    indicator: indicator,
+                    radius: '65%',
+                    axisName: {
+                        color: '#333',
+                        fontSize: 14,
+                        lineHeight: 22
+                    },
+                    splitArea: {
+                        areaStyle: {
+                            color: ['rgba(30, 87, 153, 0.1)', 'rgba(30, 87, 153, 0.2)'],
+                            shadowColor: 'rgba(0, 0, 0, 0.2)',
+                            shadowBlur: 10
+                        }
+                    },
+                    axisLine: {
+                        lineStyle: {
+                            color: 'rgba(30, 87, 153, 0.5)'
+                        }
+                    },
+                    splitLine: {
+                        lineStyle: {
+                            color: 'rgba(30, 87, 153, 0.5)'
+                        }
+                    }
+                },
+                series: [{
+                    type: 'radar',
+                    data: [{
+                        value: seriesData,
+                        name: '相关性强度',
+                        areaStyle: {
+                            color: 'rgba(238, 102, 102, 0.4)'
+                        },
+                        lineStyle: {
+                            width: 2,
+                            color: '#EE6666'
+                        },
+                        symbolSize: 6,
+                        label: {
+                            show: true,
+                            formatter: function(params) {
+                                return params.value.toFixed(2);
+                            }
+                        }
+                    }]
+                }]
+            };
+            
+            correlationChart.setOption(correlationOption);
+            charts.push(correlationChart);
+            
+            // 2. 高风险群体分析
+            const highRiskChart = echarts.init(document.getElementById('high-risk-groups'));
+            const highRiskData = Object.entries(data.high_risk_groups).map(([group, rate]) => ({
+                name: group,
+                value: (rate * 100).toFixed(1)
+            }));
+            
+            const highRiskOption = {
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: {
+                        type: 'shadow'
+                    },
+                    formatter: '{b}: {c}%'
+                },
+                xAxis: {
+                    type: 'category',
+                    data: highRiskData.map(item => item.name),
+                    axisLabel: {
+                        interval: 0,
+                        rotate: 30
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '抑郁症比例(%)',
+                    max: 100
+                },
+                series: [{
+                    data: highRiskData.map(item => item.value),
+                    type: 'bar',
+                    itemStyle: {
+                        color: function(params) {
+                            const colorList = ['#EE6666', '#5470C6', '#91CC75', '#FAC858'];
+                            return colorList[params.dataIndex % colorList.length];
+                        },
+                        borderRadius: [4, 4, 0, 0]
+                    },
+                    label: {
+                        show: true,
+                        position: 'top',
+                        formatter: '{c}%'
+                    }
+                }]
+            };
+            
+            highRiskChart.setOption(highRiskOption);
+            charts.push(highRiskChart);
+            
+            // 3. 多因素组合分析
+            const comboChart = echarts.init(document.getElementById('combo-analysis'));
+            const comboData = Object.entries(data.combo_analysis).map(([group, rate]) => ({
+                name: group,
+                value: (rate * 100).toFixed(1)
+            }));
+            
+            const comboOption = {
+                tooltip: {
+                    trigger: 'item',
+                    formatter: '{a} <br/>{b}: {c}%'
+                },
+                series: [{
+                    name: '抑郁症比例',
+                    type: 'pie',
+                    radius: ['40%', '70%'],
+                    avoidLabelOverlap: false,
+                    itemStyle: {
+                        borderRadius: 10,
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    },
+                    label: {
+                        show: true,
+                        formatter: '{b}: {c}%'
+                    },
+                    emphasis: {
+                        label: {
+                            show: true,
+                            fontSize: '18',
+                            fontWeight: 'bold'
+                        }
+                    },
+                    data: comboData
+                }]
+            };
+            
+            comboChart.setOption(comboOption);
+            charts.push(comboChart);
+            
+            // 4. 城市抑郁症比例
+            const cityChart = echarts.init(document.getElementById('city-depression'));
+            const cityOption = {
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: {
+                        type: 'shadow'
+                    },
+                    formatter: '{b}: {c}%'
+                },
+                xAxis: {
+                    type: 'category',
+                    data: data.city_depression.cities,
+                    axisLabel: {
+                        interval: 0,
+                        rotate: 30
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '抑郁症比例(%)',
+                    max: 100
+                },
+                series: [{
+                    data: data.city_depression.rates.map(rate => (rate * 100).toFixed(1)),
+                    type: 'bar',
+                    itemStyle: {
+                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: '#1e5799' },
+                            { offset: 1, color: '#207cca' }
+                        ]),
+                        borderRadius: [4, 4, 0, 0]
+                    },
+                    label: {
+                        show: true,
+                        position: 'top',
+                        formatter: '{c}%'
+                    }
+                }]
+            };
+            
+            cityChart.setOption(cityOption);
+            charts.push(cityChart);
+            
+            // 5. 年龄抑郁症比例
+            const ageChart = echarts.init(document.getElementById('age-depression'));
+            const ageOption = {
+                tooltip: {
+                    trigger: 'axis',
+                    formatter: '年龄 {b}: {c}%'
+                },
+                xAxis: {
+                    type: 'category',
+                    data: data.age_depression.ages,
+                    name: '年龄'
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '抑郁症比例(%)',
+                    max: 100
+                },
+                series: [{
+                    data: data.age_depression.rates.map(rate => (rate * 100).toFixed(1)),
+                    type: 'line',
+                    smooth: true,
+                    symbol: 'circle',
+                    symbolSize: 8,
+                    lineStyle: {
+                        width: 3,
+                        color: '#EE6666'
+                    },
+                    itemStyle: {
+                        color: '#EE6666'
+                    },
+                    areaStyle: {
+                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: 'rgba(238, 102, 102, 0.5)' },
+                            { offset: 1, color: 'rgba(238, 102, 102, 0.1)' }
+                        ])
+                    },
+                    label: {
+                        show: true,
+                        formatter: '{c}%'
+                    }
+                }]
+            };
+            
+            ageChart.setOption(ageOption);
+            charts.push(ageChart);
+            
+            // 6. 风险因素趋势分析 (新增部分)
+            const trendChart = echarts.init(document.getElementById('factor-trend-analysis'));
+            const trendOption = {
+                tooltip: {
+                    trigger: 'axis',
+                    formatter: function(params) {
+                        let result = params[0].axisValue + '<br/>';
+                        params.forEach(param => {
+                            result += `${param.seriesName}: ${param.value}%<br/>`;
+                        });
+                        return result;
+                    }
+                },
+                legend: {
+                    data: Object.keys(data.factor_trends),
+                    top: 30
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    boundaryGap: false
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '抑郁症比例(%)',
+                    max: 100,
+                    axisLabel: {
+                        formatter: '{value}%'
+                    }
+                },
+                series: Object.entries(data.factor_trends).map(([factor, trendData]) => ({
+                    name: factor,
+                    type: 'line',
+                    smooth: true,
+                    symbol: 'circle',
+                    symbolSize: 8,
+                    data: trendData.rates.map(rate => (rate * 100).toFixed(1)),
+                    label: {
+                        show: true,
+                        formatter: '{c}%'
+                    },
+                    lineStyle: {
+                        width: 3
+                    }
+                }))
+            };
+            
+            // 动态设置x轴数据(使用第一个因素的分类作为x轴)
+            if (Object.keys(data.factor_trends).length > 0) {
+                const firstFactor = Object.keys(data.factor_trends)[0];
+                trendOption.xAxis.data = data.factor_trends[firstFactor].categories;
+            }
+            
+            trendChart.setOption(trendOption);
+            charts.push(trendChart);
+            
+            // 7. 填充详细相关性表格
+            const tableBody = document.querySelector('#correlation-table tbody');
+            Object.entries(data.correlations).forEach(([factor, corr]) => {
+                const row = document.createElement('tr');
+                
+                if (typeof corr === 'object') {
+                    // 分类变量
+                    const subRows = Object.entries(corr).map(([category, value]) => {
+                        const absValue = Math.abs(value);
+                        const highlight = absValue > 0.3 ? 'highlight' : '';
+                        return `
+                            <tr>
+                                <td style="padding-left: 30px;">${category}</td>
+                                <td class="${highlight}">${value.toFixed(3)}</td>
+                                <td>${getCorrelationInterpretation(value)}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                    
+                    row.innerHTML = `
+                        <td><strong>${factor}</strong></td>
+                        <td colspan="2"></td>
+                    `;
+                    tableBody.appendChild(row);
+                    tableBody.innerHTML += subRows;
+                } else {
+                    // 连续变量
+                    const absValue = Math.abs(corr);
+                    const highlight = absValue > 0.3 ? 'highlight' : '';
+                    row.innerHTML = `
+                        <td><strong>${factor}</strong></td>
+                        <td class="${highlight}">${corr.toFixed(3)}</td>
+                        <td>${getCorrelationInterpretation(corr)}</td>
+                    `;
+                    tableBody.appendChild(row);
+                }
+            });
+            
+            // 响应式调整
+            window.addEventListener('resize', function() {
+                charts.forEach(chart => chart.resize());
+            });
+        }
+        
+        // 获取相关性解释
+        function getCorrelationInterpretation(corr) {
+            const absCorr = Math.abs(corr);
+            let strength, direction;
+            
+            if (absCorr >= 0.7) {
+                strength = '极强';
+            } else if (absCorr >= 0.5) {
+                strength = '强';
+            } else if (absCorr >= 0.3) {
+                strength = '中等';
+            } else if (absCorr >= 0.1) {
+                strength = '弱';
+            } else {
+                strength = '极弱或无';
+            }
+            
+            direction = corr > 0 ? '正' : '负';
+            
+            return `${direction}相关，${strength}相关性`;
+        }
+
+        // 页面加载完成后获取数据
+        document.addEventListener('DOMContentLoaded', fetchDataAndRenderCharts);
+    </script>
+</body>
+</html>

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>30大汽车品牌年度销售趋势</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }
+        h1 { text-align: center; color: #333; }
+        .chart-container {
+            height: 600px;
+            margin: 30px 0;
+            position: relative;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 8px 15px;
+            background: #4a89dc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover { background: #3b7dd8; }
+        .brand-filter {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .brand-tag {
+            padding: 5px 10px;
+            background: #eee;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .brand-tag:hover { background: #ddd; }
+        .brand-tag.active {
+            background: #4a89dc;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>2024年30大汽车品牌月度销售趋势</h1>
+        <div class="controls">
+            <button id="toggleLines">显示/隐藏所有折线</button>
+            <button id="resetZoom">重置缩放</button>
+        </div>
+        <div class="chart-container">
+            <canvas id="salesChart"></canvas>
+        </div>
+        <div class="brand-filter" id="brandFilter"></div>
+    </div>
+
+    <script>
+        // 1. 生成30个品牌的模拟数据（单位：万辆）
+        const brands = [
+            "比亚迪", "特斯拉", "大众", "丰田", "本田", "奔驰", "宝马", "奥迪",
+            "吉利", "长城", "长安", "蔚来", "小鹏", "理想", "五菱", "奇瑞",
+            "现代", "日产", "福特", "雪佛兰", "别克", "凯迪拉克", "雷克萨斯",
+            "沃尔沃", "保时捷", "路虎", "捷豹", "红旗", "领克", "广汽传祺"
+        ];
+
+        const months = ["1月", "2月", "3月", "4月", "5月", "6月",
+                        "7月", "8月", "9月", "10月", "11月", "12月"];
+
+        // 生成随机但合理的销售数据（基础值+波动）
+        function generateSalesData(base, volatility) {
+            return months.map((_, i) => {
+                const trend = i < 4 ? 0.8 : i < 8 ? 1 : 1.2; // 季度趋势
+                const season = Math.sin(i * 0.5) * 0.3 + 1;   // 季节性波动
+                const random = 1 + (Math.random() - 0.5) * volatility;
+                return Math.round(base * trend * season * random * 10) / 10;
+            });
+        }
+
+        // 2. 创建数据集（不同品牌设置不同基准销量）
+        const datasets = brands.map((brand, i) => {
+            const baseSales = 30 + i * 3; // 基础销量递增
+            return {
+                label: brand,
+                data: generateSalesData(baseSales, 0.2),
+                borderColor: getBrandColor(i),
+                backgroundColor: 'rgba(0,0,0,0)',
+                borderWidth: 2,
+                pointRadius: 3,
+                pointHoverRadius: 6,
+                hidden: i >= 5 // 默认只显示前5个品牌
+            };
+        });
+
+        // 3. 创建图表
+        const ctx = document.getElementById('salesChart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: months,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        title: { display: true, text: '销量（万辆）' },
+                        min: 0
+                    },
+                    x: {
+                        title: { display: true, text: '2024年度' },
+                        grid: { display: false }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            label: (context) => {
+                                return `${context.dataset.label}: ${context.parsed.y}万辆`;
+                            }
+                        }
+                    },
+                    zoom: {
+                        zoom: {
+                            wheel: { enabled: true },
+                            pinch: { enabled: true },
+                            mode: 'xy'
+                        },
+                        pan: {
+                            enabled: true,
+                            mode: 'xy'
+                        }
+                    }
+                },
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
+                }
+            }
+        });
+
+        // 4. 添加交互控制
+        document.getElementById('toggleLines').addEventListener('click', () => {
+            const allHidden = chart.data.datasets.every(d => d.hidden);
+            chart.data.datasets.forEach(d => d.hidden = !allHidden);
+            chart.update();
+            updateBrandTags();
+        });
+
+        document.getElementById('resetZoom').addEventListener('click', () => {
+            if (chart.options.plugins.zoom) {
+                chart.resetZoom();
+            }
+        });
+
+        // 5. 品牌筛选标签
+        const brandFilter = document.getElementById('brandFilter');
+        function updateBrandTags() {
+            brandFilter.innerHTML = '';
+            chart.data.datasets.forEach((dataset, i) => {
+                const tag = document.createElement('div');
+                tag.className = `brand-tag ${dataset.hidden ? '' : 'active'}`;
+                tag.textContent = dataset.label;
+                tag.style.borderColor = getBrandColor(i);
+                tag.addEventListener('click', () => {
+                    dataset.hidden = !dataset.hidden;
+                    chart.update();
+                    tag.classList.toggle('active');
+                });
+                brandFilter.appendChild(tag);
+            });
+        }
+        updateBrandTags();
+
+        // 生成品牌颜色（使用HSL色相环均匀分布）
+        function getBrandColor(index) {
+            const hue = (index * 360 / brands.length) % 360;
+            return `hsl(${hue}, 70%, 50%)`;
+        }
+    </script>
+</body>
+</html>

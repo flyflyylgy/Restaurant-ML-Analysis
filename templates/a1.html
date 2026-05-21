@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学生心理健康数据分析</title>
+    <!-- 1. 确保ECharts正确加载 -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f7fa;
+        }
+        .dashboard {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #1e5799, #207cca);
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .chart-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+            height: 450px;
+        }
+        .chart-title {
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+        .full-width {
+            grid-column: 1 / -1;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 15px;
+            color: #666;
+            font-size: 14px;
+            background-color: #f0f2f5;
+            border-radius: 8px;
+        }
+        .error-message {
+            color: red;
+            padding: 15px;
+            background: #ffeeee;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <h1>学生心理健康数据分析</h1>
+            <p>基于学生健康调查数据的多维度可视化分析</p>
+        </div>
+
+        <div id="error-message" class="error-message" style="display:none;"></div>
+
+        <div class="grid-container">
+            <div class="chart-container">
+                <div class="chart-title">学业压力与抑郁症关系</div>
+                <div id="stress-chart" style="width:100%;height:100%;"></div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">学位GPA与抑郁症关系</div>
+                <div id="gpa-chart" style="width:100%;height:100%;"></div>
+            </div>
+
+            <div class="chart-container full-width">
+                <div class="chart-title">睡眠时长与抑郁症关系</div>
+                <div id="sleep-chart" style="width:100%;height:100%;"></div>
+            </div>
+        </div>
+
+        <div class="footer">
+            数据可视化分析平台 © 2023 | 数据来源: 学生健康调查数据库
+        </div>
+    </div>
+
+    <script>
+        // 2. 增强错误处理
+        function showError(message) {
+            const el = document.getElementById('error-message');
+            el.innerHTML = `<strong>错误:</strong> ${message}`;
+            el.style.display = 'block';
+            console.error(message);
+        }
+
+        // 3. 更新图表渲染函数
+        function renderStressChart(chart, data) {
+            try {
+                const option = {
+                    tooltip: {
+                        trigger: 'axis',
+                        formatter: params => `
+                            <div>压力等级: ${params[0].axisValue}</div>
+                            <div>总人数: ${params[0].data.total}</div>
+                            <div>抑郁症人数: ${params[0].data.depression} (${params[0].data.rate}%)</div>
+                            <div>平均满意度: ${params[1].data}分</div>
+                        `
+                    },
+                    legend: {
+                        data: ['总人数', '平均满意度']
+                    },
+                    xAxis: {
+                        type: 'category',
+                        data: data.stress_levels,
+                        name: '压力等级'
+                    },
+                    yAxis: [
+                        { type: 'value', name: '人数' },
+                        { type: 'value', name: '满意度', min: 0, max: 5 }
+                    ],
+                    series: [
+                        {
+                            name: '总人数',
+                            type: 'bar',
+                            data: data.total_counts.map((count, i) => ({
+                                value: count,
+                                total: count,
+                                depression: data.depression_counts[i],
+                                rate: data.depression_rates[i]
+                            })),
+                            itemStyle: { color: '#5470C6' }
+                        },
+                        {
+                            name: '平均满意度',
+                            type: 'line',
+                            yAxisIndex: 1,
+                            data: data.avg_satisfaction,
+                            symbol: 'circle',
+                            itemStyle: { color: '#91CC75' }
+                        }
+                    ]
+                };
+                chart.setOption(option);
+            } catch (e) {
+                showError(`渲染压力图表失败: ${e.message}`);
+            }
+        }
+
+        function renderGpaChart(chart, data) {
+            try {
+                const option = {
+                    tooltip: {
+                        trigger: 'axis',
+                        formatter: params => `
+                            <div>学位: ${params[0].axisValue}</div>
+                            <div>平均GPA: ${params[0].data.gpa}</div>
+                            <div>总人数: ${params[0].data.total}</div>
+                            <div>抑郁症比例: ${params[0].data.rate}%</div>
+                        `
+                    },
+                    xAxis: {
+                        type: 'category',
+                        data: data.degrees,
+                        axisLabel: { rotate: 30 }
+                    },
+                    yAxis: [
+                        { type: 'value', name: '人数' },
+                        { type: 'value', name: 'GPA', min: 0, max: 10 }
+                    ],
+                    series: [
+                        {
+                            name: '总人数',
+                            type: 'bar',
+                            data: data.total_counts.map((count, i) => ({
+                                value: count,
+                                total: count,
+                                gpa: data.avg_gpas[i],
+                                rate: data.depression_rates[i]
+                            })),
+                            itemStyle: { color: '#5470C6' }
+                        },
+                        {
+                            name: '平均GPA',
+                            type: 'line',
+                            yAxisIndex: 1,
+                            data: data.avg_gpas,
+                            symbol: 'diamond',
+                            itemStyle: { color: '#FAC858' }
+                        }
+                    ]
+                };
+                chart.setOption(option);
+            } catch (e) {
+                showError(`渲染GPA图表失败: ${e.message}`);
+            }
+        }
+
+        function renderSleepChart(chart, data) {
+            try {
+                const option = {
+                    tooltip: {
+                        trigger: 'axis',
+                        formatter: params => `
+                            <div>睡眠时长: ${params[0].axisValue}</div>
+                            <div>总人数: ${params[0].data.total}</div>
+                            <div>抑郁症人数: ${params[0].data.depression} (${params[0].data.rate}%)</div>
+                            <div>平均压力: ${params[1].data}分</div>
+                        `
+                    },
+                    legend: {
+                        data: ['总人数', '平均压力']
+                    },
+                    xAxis: {
+                        type: 'category',
+                        data: data.sleep_durations,
+                        name: '睡眠时长'
+                    },
+                    yAxis: [
+                        { type: 'value', name: '人数' },
+                        { type: 'value', name: '压力值', min: 0, max: 5 }
+                    ],
+                    series: [
+                        {
+                            name: '总人数',
+                            type: 'bar',
+                            data: data.total_counts.map((count, i) => ({
+                                value: count,
+                                total: count,
+                                depression: data.depression_counts[i],
+                                rate: data.depression_rates[i]
+                            })),
+                            itemStyle: { color: '#5470C6' }
+                        },
+                        {
+                            name: '平均压力',
+                            type: 'line',
+                            yAxisIndex: 1,
+                            data: data.avg_stress,
+                            symbol: 'circle',
+                            itemStyle: { color: '#EE6666' }
+                        }
+                    ]
+                };
+                chart.setOption(option);
+            } catch (e) {
+                showError(`渲染睡眠图表失败: ${e.message}`);
+            }
+        }
+
+        // 4. 初始化函数
+        async function initCharts() {
+            try {
+                // 检查ECharts是否加载
+                if (typeof echarts === 'undefined') {
+                    throw new Error('ECharts库加载失败，请检查网络连接');
+                }
+
+                // 初始化图表实例
+                const stressChart = echarts.init(document.getElementById('stress-chart'));
+                const gpaChart = echarts.init(document.getElementById('gpa-chart'));
+                const sleepChart = echarts.init(document.getElementById('sleep-chart'));
+
+                // 获取数据
+                const apiBase = 'http://localhost:5001';
+                const [stressRes, gpaRes, sleepRes] = await Promise.all([
+                    fetch(`${apiBase}/api/stress_depression`).then(res => {
+                        if (!res.ok) throw new Error(`压力数据请求失败: ${res.status}`);
+                        return res.json();
+                    }),
+                    fetch(`${apiBase}/api/gpa_depression`).then(res => {
+                        if (!res.ok) throw new Error(`GPA数据请求失败: ${res.status}`);
+                        return res.json();
+                    }),
+                    fetch(`${apiBase}/api/sleep_depression`).then(res => {
+                        if (!res.ok) throw new Error(`睡眠数据请求失败: ${res.status}`);
+                        return res.json();
+                    })
+                ]);
+
+                // 检查数据有效性
+                if (!stressRes.stress_levels || !gpaRes.degrees || !sleepRes.sleep_durations) {
+                    throw new Error('API返回数据格式不正确');
+                }
+
+                // 渲染图表
+                renderStressChart(stressChart, stressRes);
+                renderGpaChart(gpaChart, gpaRes);
+                renderSleepChart(sleepChart, sleepRes);
+
+                // 窗口大小变化时重绘
+                window.addEventListener('resize', () => {
+                    stressChart.resize();
+                    gpaChart.resize();
+                    sleepChart.resize();
+                });
+
+            } catch (error) {
+                showError(error.message);
+                console.error('初始化失败:', error);
+
+                // 开发模式下加载示例数据
+                if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                    if (confirm('加载示例数据用于演示？')) {
+                        loadSampleData();
+                    }
+                }
+            }
+        }
+
+        // 5. 示例数据加载（开发用）
+        function loadSampleData() {
+            const sampleData = {
+                stressData: {
+                    stress_levels: [1, 2, 3, 4, 5],
+                    total_counts: [100, 150, 200, 180, 120],
+                    depression_counts: [5, 15, 40, 72, 90],
+                    depression_rates: [5, 10, 20, 40, 75],
+                    avg_satisfaction: [4.5, 4.0, 3.2, 2.5, 1.8]
+                },
+                gpaData: {
+                    degrees: ["博士", "硕士", "本科", "大专"],
+                    avg_gpas: [9.2, 8.5, 7.8, 6.5],
+                    total_counts: [30, 80, 200, 90],
+                    depression_counts: [6, 24, 80, 45],
+                    depression_rates: [20, 30, 40, 50]
+                },
+                sleepData: {
+                    sleep_durations: ["小于5小时", "5到6小时", "7到8小时", "超过8小时"],
+                    total_counts: [120, 180, 150, 50],
+                    depression_counts: [72, 54, 30, 10],
+                    depression_rates: [60, 30, 20, 20],
+                    avg_stress: [4.2, 3.5, 2.8, 2.0]
+                }
+            };
+
+            const stressChart = echarts.init(document.getElementById('stress-chart'));
+            const gpaChart = echarts.init(document.getElementById('gpa-chart'));
+            const sleepChart = echarts.init(document.getElementById('sleep-chart'));
+
+            renderStressChart(stressChart, sampleData.stressData);
+            renderGpaChart(gpaChart, sampleData.gpaData);
+            renderSleepChart(sleepChart, sampleData.sleepData);
+        }
+
+        // 启动应用
+        document.addEventListener('DOMContentLoaded', initCharts);
+    </script>
+</body>
+</html>

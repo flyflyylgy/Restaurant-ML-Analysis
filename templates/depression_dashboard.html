@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学生抑郁症分析仪表盘</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f7fa;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .chart-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .chart-container {
+            flex: 1;
+            min-width: 600px;
+            height: 500px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        .chart-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+            text-align: center;
+        }
+        .boxplot-container {
+            width: 100%;
+            height: 600px;
+        }
+        .treemap-container {
+            width: 100%;
+            height: 700px;
+        }
+        .feature-importance {
+            margin: 20px 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .feature-card {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .feature-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .feature-bar-container {
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .feature-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+        }
+        .feature-value {
+            font-size: 12px;
+            color: #6c757d;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>学生抑郁症分析仪表盘</h1>
+            <p>基于学生压力、睡眠、学习满意度等因素的抑郁症风险分析</p>
+        </div>
+
+        <!-- 学业压力与财务压力图表 -->
+        <div class="chart-row">
+            <div class="chart-container">
+                <div class="chart-title">学业压力与抑郁症关系</div>
+                <div id="stressChart" style="width: 100%; height: 450px;"></div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">财务压力与抑郁症关系</div>
+                <div id="financialChart" style="width: 100%; height: 450px;"></div>
+            </div>
+        </div>
+
+        <!-- 自杀念头箱线图 -->
+        <div class="chart-container boxplot-container">
+            <div class="chart-title">自杀念头与各因素关系 (箱线图分析)</div>
+            <div id="suicideBoxplot" style="width: 100%; height: 550px;"></div>
+        </div>
+
+        <!-- 决策树分析 - 矩形树图 -->
+        <div class="chart-container treemap-container">
+            <div class="chart-title">抑郁症影响因素分析 (矩形树图)</div>
+            <div class="feature-importance" id="featureImportance"></div>
+            <div id="treemapChart" style="width: 100%; height: 600px;"></div>
+        </div>
+    </div>
+
+    <script>
+        // 初始化所有图表
+        const stressChart = echarts.init(document.getElementById('stressChart'));
+        const financialChart = echarts.init(document.getElementById('financialChart'));
+        const suicideBoxplot = echarts.init(document.getElementById('suicideBoxplot'));
+        const treemapChart = echarts.init(document.getElementById('treemapChart'));
+
+        // 加载数据
+        function loadData() {
+            // 原有压力数据
+            fetch('/api/stress/depression')
+                .then(response => response.json())
+                .then(data => renderStressChart(data))
+                .catch(console.error);
+
+            fetch('/api/financial/depression')
+                .then(response => response.json())
+                .then(data => renderFinancialChart(data))
+                .catch(console.error);
+
+            // 自杀念头箱线图数据
+            fetch('/api/suicide/depression/boxplot')
+                .then(response => response.json())
+                .then(data => renderSuicideBoxplot(data))
+                .catch(console.error);
+
+            // 决策树数据
+            fetch('/api/decision/tree')
+                .then(response => response.json())
+                .then(data => renderTreemap(data))
+                .catch(console.error);
+        }
+
+        // 渲染学业压力图表
+        function renderStressChart(data) {
+            const option = {
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'shadow' },
+                    formatter: function(params) {
+                        const depressed = params[0].data;
+                        const notDepressed = params[1].data;
+                        const rate = params[2].data;
+                        return `
+                            <strong>学业压力: ${params[0].name}</strong><br/>
+                            患抑郁症人数: ${depressed}<br/>
+                            未患抑郁症人数: ${notDepressed}<br/>
+                            抑郁症占比: ${rate}%
+                        `;
+                    }
+                },
+                legend: {
+                    data: ['患抑郁症人数', '未患抑郁症人数', '抑郁症占比'],
+                    top: 10
+                },
+                grid: {
+                    top: 60,
+                    bottom: 30
+                },
+                xAxis: {
+                    type: 'category',
+                    data: data.stress_levels.map(level => `压力等级 ${level}`),
+                    axisLabel: { fontSize: 12, interval: 0 }
+                },
+                yAxis: [
+                    {
+                        type: 'value',
+                        name: '人数',
+                        axisLabel: { formatter: '{value}' },
+                        max: 6000
+                    },
+                    {
+                        type: 'value',
+                        name: '占比(%)',
+                        min: 0,
+                        max: 100,
+                        axisLabel: { formatter: '{value}%' }
+                    }
+                ],
+                series: [
+                    {
+                        name: '患抑郁症人数',
+                        type: 'bar',
+                        stack: 'total',
+                        emphasis: { focus: 'series' },
+                        itemStyle: { color: '#e74c3c' },
+                        data: data.depressed
+                    },
+                    {
+                        name: '未患抑郁症人数',
+                        type: 'bar',
+                        stack: 'total',
+                        emphasis: { focus: 'series' },
+                        itemStyle: { color: '#2ecc71' },
+                        data: data.not_depressed
+                    },
+                    {
+                        name: '抑郁症占比',
+                        type: 'line',
+                        yAxisIndex: 1,
+                        symbolSize: 8,
+                        lineStyle: { width: 3, color: '#3498db' },
+                        itemStyle: { color: '#3498db' },
+                        data: data.depression_rate,
+                        label: {
+                            show: true,
+                            formatter: '{c}%',
+                            position: 'top'
+                        }
+                    }
+                ]
+            };
+            stressChart.setOption(option);
+        }
+
+        // 渲染财务压力图表
+        function renderFinancialChart(data) {
+            const option = {
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'shadow' },
+                    formatter: function(params) {
+                        const depressed = params[0].data;
+                        const notDepressed = params[1].data;
+                        const rate = params[2].data;
+                        return `
+                            <strong>财务压力: ${params[0].name}</strong><br/>
+                            患抑郁症人数: ${depressed}<br/>
+                            未患抑郁症人数: ${notDepressed}<br/>
+                            抑郁症占比: ${rate}%
+                        `;
+                    }
+                },
+                legend: {
+                    data: ['患抑郁症人数', '未患抑郁症人数', '抑郁症占比'],
+                    top: 10
+                },
+                grid: {
+                    top: 60,
+                    bottom: 30
+                },
+                xAxis: {
+                    type: 'category',
+                    data: data.financial_levels.map(level => `财务压力 ${level}`),
+                    axisLabel: { fontSize: 12, interval: 0 }
+                },
+                yAxis: [
+                    {
+                        type: 'value',
+                        name: '人数',
+                        axisLabel: { formatter: '{value}' },
+                        max: 6000
+                    },
+                    {
+                        type: 'value',
+                        name: '占比(%)',
+                        min: 0,
+                        max: 100,
+                        axisLabel: { formatter: '{value}%' }
+                    }
+                ],
+                series: [
+                    {
+                        name: '患抑郁症人数',
+                        type: 'bar',
+                        stack: 'total',
+                        emphasis: { focus: 'series' },
+                        itemStyle: { color: '#e74c3c' },
+                        data: data.depressed
+                    },
+                    {
+                        name: '未患抑郁症人数',
+                        type: 'bar',
+                        stack: 'total',
+                        emphasis: { focus: 'series' },
+                        itemStyle: { color: '#2ecc71' },
+                        data: data.not_depressed
+                    },
+                    {
+                        name: '抑郁症占比',
+                        type: 'line',
+                        yAxisIndex: 1,
+                        symbolSize: 8,
+                        lineStyle: { width: 3, color: '#3498db' },
+                        itemStyle: { color: '#3498db' },
+                        data: data.depression_rate,
+                        label: {
+                            show: true,
+                            formatter: '{c}%',
+                            position: 'top'
+                        }
+                    }
+                ]
+            };
+            financialChart.setOption(option);
+        }
+
+        // 渲染自杀念头箱线图
+        function renderSuicideBoxplot(data) {
+            const series = [];
+            const xAxisData = [];
+
+            // 准备箱线图数据
+            const metrics = ['学业压力', '财务压力', '学习满意度', '工作学习时间', '睡眠小时数'];
+
+            metrics.forEach(metric => {
+                xAxisData.push(metric);
+
+                ['Yes', 'No'].forEach(group => {
+                    const key = `${metric}_${group}`;
+                    if (data[key]) {
+                        series.push({
+                            name: group === 'Yes' ? '有自杀念头' : '无自杀念头',
+                            type: 'boxplot',
+                            xAxisIndex: 0,
+                            yAxisIndex: 0,
+                            data: [
+                                {
+                                    value: calcBoxplotData(data[key]),
+                                    itemStyle: {
+                                        color: group === 'Yes' ? '#e74c3c' : '#2ecc71',
+                                        borderColor: group === 'Yes' ? '#c0392b' : '#27ae60',
+                                        borderWidth: 2
+                                    }
+                                }
+                            ]
+                        });
+                    }
+                });
+            });
+
+            const option = {
+                tooltip: {
+                    trigger: 'item',
+                    axisPointer: { type: 'shadow' },
+                    formatter: function(params) {
+                        const stats = params.data.value;
+                        return `
+                            <strong>${params.seriesName} - ${params.name}</strong><br/>
+                            最小值: ${stats[0].toFixed(2)}<br/>
+                            下四分位数: ${stats[1].toFixed(2)}<br/>
+                            中位数: ${stats[2].toFixed(2)}<br/>
+                            上四分位数: ${stats[3].toFixed(2)}<br/>
+                            最大值: ${stats[4].toFixed(2)}
+                        `;
+                    }
+                },
+                legend: {
+                    data: ['有自杀念头', '无自杀念头'],
+                    top: 10
+                },
+                grid: {
+                    top: 50,
+                    left: '10%',
+                    right: '10%',
+                    bottom: '15%'
+                },
+                xAxis: {
+                    type: 'category',
+                    data: xAxisData,
+                    axisLabel: {
+                        fontSize: 12,
+                        rotate: 30,
+                        interval: 0,
+                        margin: 20
+                    },
+                    axisPointer: { type: 'shadow' }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '数值',
+                    min: function(value) { return Math.max(0, value.min - 1); },
+                    axisLabel: { fontSize: 12 }
+                },
+                series: series
+            };
+
+            suicideBoxplot.setOption(option);
+        }
+
+        // 计算箱线图数据
+        function calcBoxplotData(data) {
+            const sorted = [...data].sort((a, b) => a - b);
+            const q1 = d3.quantile(sorted, 0.25);
+            const median = d3.quantile(sorted, 0.5);
+            const q3 = d3.quantile(sorted, 0.75);
+            const iqr = q3 - q1;
+            const min = Math.max(sorted[0], q1 - 1.5 * iqr);
+            const max = Math.min(sorted[sorted.length - 1], q3 + 1.5 * iqr);
+
+            return [min, q1, median, q3, max];
+        }
+
+        // 渲染矩形树图
+        function renderTreemap(data) {
+            // 显示特征重要性
+            const importanceContainer = document.getElementById('featureImportance');
+            importanceContainer.innerHTML = '<h3>特征重要性排名</h3>';
+
+            // 按重要性排序
+            const sortedFeatures = Object.entries(data.feature_importance)
+                .sort((a, b) => b[1] - a[1]);
+
+            sortedFeatures.forEach(([name, value]) => {
+                const card = document.createElement('div');
+                card.className = 'feature-card';
+
+                const nameEl = document.createElement('div');
+                nameEl.className = 'feature-name';
+                nameEl.textContent = name;
+
+                const barContainer = document.createElement('div');
+                barContainer.className = 'feature-bar-container';
+
+                const bar = document.createElement('div');
+                bar.className = 'feature-bar';
+                bar.style.width = `${value * 100}%`;
+
+                const valueEl = document.createElement('div');
+                valueEl.className = 'feature-value';
+                valueEl.textContent = value.toFixed(3);
+
+                barContainer.appendChild(bar);
+                card.appendChild(nameEl);
+                card.appendChild(barContainer);
+                card.appendChild(valueEl);
+                importanceContainer.appendChild(card);
+            });
+
+            // 创建矩形树图数据
+            const treemapData = convertToTreemapData(data.tree_rules);
+
+            const option = {
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function(info) {
+                        const value = info.value;
+                        const treePathInfo = info.treePathInfo;
+                        const path = [];
+
+                        for (let i = 1; i < treePathInfo.length; i++) {
+                            path.push(treePathInfo[i].name);
+                        }
+
+                        return [
+                            '<div style="font-size:14px;color:#666;font-weight:400;line-height:1;">',
+                            path.join(' > '),
+                            '</div>',
+                            '节点深度: ' + (treePathInfo.length - 1),
+                            value ? '<br/>样本数: ' + value : ''
+                        ].join('');
+                    }
+                },
+                series: [{
+                    name: '抑郁症决策树',
+                    type: 'treemap',
+                    visibleMin: 1,
+                    data: treemapData,
+                    breadcrumb: {
+                        show: true,
+                        height: 30
+                    },
+                    label: {
+                        show: true,
+                        formatter: '{b}'
+                    },
+                    levels: [
+                        {
+                            itemStyle: {
+                                borderColor: '#555',
+                                borderWidth: 4,
+                                gapWidth: 4
+                            }
+                        },
+                        {
+                            itemStyle: {
+                                borderColor: '#777',
+                                borderWidth: 2,
+                                gapWidth: 2
+                            }
+                        },
+                        {
+                            itemStyle: {
+                                borderColor: '#999',
+                                borderWidth: 1,
+                                gapWidth: 1
+                            }
+                        }
+                    ]
+                }]
+            };
+
+            treemapChart.setOption(option);
+        }
+
+        // 将决策树规则转换为矩形树图数据格式
+        function convertToTreemapData(treeRules) {
+            const lines = treeRules.split('\n');
+            const root = {
+                name: '抑郁症预测',
+                value: 1000,
+                children: []
+            };
+            let current = root;
+            const stack = [];
+
+            lines.forEach(line => {
+                if (!line.trim()) return;
+
+                const indent = line.match(/^\|   */)[0].length / 3;
+                const text = line.replace(/^\|[\s-]*/, '').trim();
+
+                while (stack.length > indent) {
+                    stack.pop();
+                    current = stack.length ? stack[stack.length - 1] : root;
+                }
+
+                const node = {
+                    name: text,
+                    value: Math.max(10, 100 - indent * 20)
+                };
+                if (!current.children) current.children = [];
+                current.children.push(node);
+
+                stack.push(node);
+                current = node;
+            });
+
+            return root.children;
+        }
+
+        // 窗口大小变化时重新调整图表大小
+        window.addEventListener('resize', function() {
+            stressChart.resize();
+            financialChart.resize();
+            suicideBoxplot.resize();
+            treemapChart.resize();
+        });
+
+        // 页面加载完成后获取数据
+        document.addEventListener('DOMContentLoaded', loadData);
+    </script>
+</body>
+</html>

@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学生抑郁症相关因素箱型图分析</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        /* 保持原有样式不变 */
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f7fa;
+        }
+        .dashboard {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #1e5799, #207cca);
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .chart-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+            height: 500px;
+        }
+        .chart-title {
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 15px;
+            color: #666;
+            font-size: 14px;
+            background-color: #f0f2f5;
+            border-radius: 8px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 18px;
+        }
+        .error-message {
+            color: red;
+            text-align: center;
+            padding: 20px;
+            background: #ffeeee;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <h1>学生抑郁症相关因素箱型图分析</h1>
+            <p>基于学业压力、学习满意度和睡眠时长的分布比较</p>
+        </div>
+
+        <div id="loading" class="loading">
+            数据加载中，请稍候...
+        </div>
+
+        <div id="error-message" class="error-message" style="display:none;"></div>
+
+        <div id="content" style="display:none;">
+            <div class="chart-container">
+                <div class="chart-title">学业压力分布对比</div>
+                <div id="stress-chart" style="width:100%;height:100%;"></div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">学习满意度分布对比</div>
+                <div id="satisfaction-chart" style="width:100%;height:100%;"></div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">睡眠时长分布对比</div>
+                <div id="sleep-chart" style="width:100%;height:100%;"></div>
+            </div>
+        </div>
+
+        <div class="footer">
+            数据可视化分析平台 © 2023 | 数据来源: 学生健康调查数据库
+        </div>
+    </div>
+
+    <script>
+        // 显示错误信息
+        function showError(message) {
+            const el = document.getElementById('error-message');
+            el.innerHTML = `<strong>错误:</strong> ${message}`;
+            el.style.display = 'block';
+            console.error(message);
+        }
+
+        // 创建箱型图
+        function createBoxPlot(chartElement, title, depressedData, nonDepressedData) {
+            const chart = echarts.init(chartElement);
+
+            const option = {
+                title: {
+                    text: title,
+                    left: 'center'
+                },
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function(params) {
+                        const data = params.data;
+                        return [
+                            `群体: ${params.seriesName}`,
+                            `最大值: ${data[3].toFixed(2)}`,
+                            `上四分位数: ${data[2].toFixed(2)}`,
+                            `中位数: ${data[1].toFixed(2)}`,
+                            `下四分位数: ${data[0].toFixed(2)}`,
+                            `最小值: ${data[4].toFixed(2)}`
+                        ].join('<br/>');
+                    }
+                },
+                legend: {
+                    data: ['抑郁症群体', '非抑郁症群体'],
+                    top: 30
+                },
+                grid: {
+                    left: '10%',
+                    right: '10%',
+                    bottom: '15%'
+                },
+                xAxis: {
+                    type: 'category',
+                    data: ['抑郁症群体', '非抑郁症群体'],
+                    axisLabel: {
+                        fontSize: 12
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: title,
+                    min: function(value) {
+                        return Math.max(0, value.min - 1);
+                    },
+                    max: function(value) {
+                        return value.max + 1;
+                    }
+                },
+                series: [
+                    {
+                        name: '抑郁症群体',
+                        type: 'boxplot',
+                        data: [depressedData],
+                        itemStyle: {
+                            color: '#c23531',
+                            borderColor: '#dd6b66'
+                        },
+                        emphasis: {
+                            itemStyle: {
+                                color: '#dd6b66',
+                                borderColor: '#c23531'
+                            }
+                        }
+                    },
+                    {
+                        name: '非抑郁症群体',
+                        type: 'boxplot',
+                        data: [nonDepressedData],
+                        itemStyle: {
+                            color: '#61a0a8',
+                            borderColor: '#61a0a8'
+                        },
+                        emphasis: {
+                            itemStyle: {
+                                color: '#61a0a8',
+                                borderColor: '#2f4554'
+                            }
+                        }
+                    }
+                ]
+            };
+
+            chart.setOption(option);
+            return chart;
+        }
+
+        // 计算分位数
+        function quantile(sorted, p) {
+            const pos = (sorted.length - 1) * p;
+            const base = Math.floor(pos);
+            const rest = pos - base;
+
+            if (sorted[base + 1] !== undefined) {
+                return sorted[base] + rest * (sorted[base + 1] - sorted[base]);
+            } else {
+                return sorted[base];
+            }
+        }
+
+        // 计算箱型图数据
+        function calculateBoxData(values) {
+            if (!values || values.length === 0) return [0, 0, 0, 0, 0];
+
+            // 排序
+            const sorted = [...values].sort((a, b) => a - b);
+            const q1 = quantile(sorted, 0.25);
+            const median = quantile(sorted, 0.5);
+            const q3 = quantile(sorted, 0.75);
+
+            // 计算上下边界
+            const iqr = q3 - q1;
+            const lowerBound = Math.max(sorted[0], q1 - 1.5 * iqr);
+            const upperBound = Math.min(sorted[sorted.length - 1], q3 + 1.5 * iqr);
+
+            return [lowerBound, q1, median, q3, upperBound];
+        }
+
+        // 初始化图表
+        async function initCharts() {
+            try {
+                document.getElementById('loading').style.display = 'block';
+
+                // 检查ECharts是否加载
+                if (typeof echarts === 'undefined') {
+                    throw new Error('ECharts库加载失败，请检查网络连接');
+                }
+
+                // 获取数据
+                const response = await fetch('http://localhost:5001/api/boxplot_data');
+                if (!response.ok) {
+                    throw new Error(`数据请求失败: ${response.status}`);
+                }
+
+                const data = await response.json();
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                // 检查数据有效性
+                if (!data.depressed || !data.non_depressed) {
+                    throw new Error('API返回数据格式不正确');
+                }
+
+                // 计算箱型图数据
+                const stressDepressed = calculateBoxData(data.depressed.stress);
+                const stressNonDepressed = calculateBoxData(data.non_depressed.stress);
+
+                const satisfactionDepressed = calculateBoxData(data.depressed.satisfaction);
+                const satisfactionNonDepressed = calculateBoxData(data.non_depressed.satisfaction);
+
+                const sleepDepressed = calculateBoxData(data.depressed.sleep_hours);
+                const sleepNonDepressed = calculateBoxData(data.non_depressed.sleep_hours);
+
+                // 创建图表
+                const stressChart = createBoxPlot(
+                    document.getElementById('stress-chart'),
+                    '学业压力 (1-5分)',
+                    stressDepressed,
+                    stressNonDepressed
+                );
+
+                const satisfactionChart = createBoxPlot(
+                    document.getElementById('satisfaction-chart'),
+                    '学习满意度 (1-5分)',
+                    satisfactionDepressed,
+                    satisfactionNonDepressed
+                );
+
+                const sleepChart = createBoxPlot(
+                    document.getElementById('sleep-chart'),
+                    '睡眠时长 (小时)',
+                    sleepDepressed,
+                    sleepNonDepressed
+                );
+
+                // 显示内容
+                document.getElementById('content').style.display = 'block';
+
+                // 窗口大小变化时重绘
+                window.addEventListener('resize', function() {
+                    stressChart.resize();
+                    satisfactionChart.resize();
+                    sleepChart.resize();
+                });
+
+            } catch (error) {
+                showError(error.message);
+                console.error('初始化失败:', error);
+
+                // 开发模式下加载示例数据
+                if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                    if (confirm('加载示例数据用于演示？')) {
+                        loadSampleData();
+                    }
+                }
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        // 示例数据加载（开发用）
+        function loadSampleData() {
+            const sampleData = {
+                depressed: {
+                    stress: Array(100).fill().map(() => Math.min(5, Math.max(1, (Math.random() * 2) + 3))),
+                    satisfaction: Array(100).fill().map(() => Math.min(5, Math.max(1, (Math.random() * 2) + 1))),
+                    sleep_hours: Array(100).fill().map(() => {
+                        const r = Math.random();
+                        if (r < 0.6) return 4.5;
+                        if (r < 0.9) return 5.5;
+                        return 7.5;
+                    })
+                },
+                non_depressed: {
+                    stress: Array(100).fill().map(() => Math.min(5, Math.max(1, (Math.random() * 2) + 1))),
+                    satisfaction: Array(100).fill().map(() => Math.min(5, Math.max(1, (Math.random() * 2) + 3))),
+                    sleep_hours: Array(100).fill().map(() => {
+                        const r = Math.random();
+                        if (r < 0.2) return 4.5;
+                        if (r < 0.5) return 5.5;
+                        if (r < 0.9) return 7.5;
+                        return 8.5;
+                    })
+                }
+            };
+
+            // 计算箱型图数据
+            const stressDepressed = calculateBoxData(sampleData.depressed.stress);
+            const stressNonDepressed = calculateBoxData(sampleData.non_depressed.stress);
+
+            const satisfactionDepressed = calculateBoxData(sampleData.depressed.satisfaction);
+            const satisfactionNonDepressed = calculateBoxData(sampleData.non_depressed.satisfaction);
+
+            const sleepDepressed = calculateBoxData(sampleData.depressed.sleep_hours);
+            const sleepNonDepressed = calculateBoxData(sampleData.non_depressed.sleep_hours);
+
+            // 创建图表
+            createBoxPlot(
+                document.getElementById('stress-chart'),
+                '学业压力 (1-5分)',
+                stressDepressed,
+                stressNonDepressed
+            );
+
+            createBoxPlot(
+                document.getElementById('satisfaction-chart'),
+                '学习满意度 (1-5分)',
+                satisfactionDepressed,
+                satisfactionNonDepressed
+            );
+
+            createBoxPlot(
+                document.getElementById('sleep-chart'),
+                '睡眠时长 (小时)',
+                sleepDepressed,
+                sleepNonDepressed
+            );
+
+            document.getElementById('content').style.display = 'block';
+        }
+
+        // 启动应用
+        document.addEventListener('DOMContentLoaded', initCharts);
+    </script>
+</body>
+</html>

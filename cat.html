@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>汽车销量排行榜</title>
+    <style>
+        body { font-family: "Microsoft YaHei"; margin: 20px; }
+        #chart { width: 600px; margin: 0 auto; text-align: center; }
+        .legend { display: flex; flex-wrap: wrap; justify-content: center; }
+        .legend-item { display: flex; align-items: center; margin: 5px 15px; }
+        .legend-color { width: 15px; height: 15px; margin-right: 5px; }
+    </style>
+</head>
+<body>
+    <div id="chart">
+        <h2>2024年中国汽车品牌销量排行榜</h2>
+        <p style="color:#666">数据周期：2024年1月1日-12月31日 | 单位：万辆</p>
+        <svg width="400" height="400" viewBox="0 0 200 200"></svg>
+        <div class="legend" id="legend"></div>
+    </div>
+
+    <script>
+        const data = [
+             { brand: '比亚迪', sales: 280.5, color: '#e74c3c' },
+            { brand: '特斯拉', sales: 195.2, color: '#3498db' },
+            { brand: '大众', sales: 182.7, color: '#2ecc71' },
+            { brand: '丰田', sales: 175.8, color: '#f1c40f' },
+            { brand: '本田', sales: 168.3, color: '#9b59b6' },
+            { brand: '吉利', sales: 152.6, color: '#1abc9c' },
+            { brand: '长安', sales: 142.9, color: '#d35400' },
+            { brand: '奔驰', sales: 138.4, color: '#34495e' },
+            { brand: '宝马', sales: 135.7, color: '#16a085' },
+            { brand: '奥迪', sales: 128.6, color: '#c0392b' },
+            { brand: '哈弗', sales: 125.3, color: '#2980b9' },
+            { brand: '五菱', sales: 118.9, color: '#27ae60' },
+            { brand: '奇瑞', sales: 115.2, color: '#f39c12' },
+            { brand: '现代', sales: 108.7, color: '#8e44ad' },
+            { brand: '日产', sales: 105.4, color: '#e67e22' },
+            { brand: '红旗', sales: 98.6, color: '#e74c3c' },
+            { brand: '蔚来', sales: 95.2, color: '#3498db' },
+            { brand: '理想', sales: 92.8, color: '#2ecc71' },
+            { brand: '小鹏', sales: 88.3, color: '#f1c40f' },
+            { brand: '领克', sales: 85.7, color: '#9b59b6' },
+            { brand: 'WEY', sales: 82.4, color: '#1abc9c' },
+            { brand: '荣威', sales: 78.9, color: '#d35400' },
+            { brand: '名爵', sales: 75.6, color: '#34495e' },
+            { brand: '凯迪拉克', sales: 72.3, color: '#16a085' },
+            { brand: '雷克萨斯', sales: 68.9, color: '#c0392b' },
+            { brand: '沃尔沃', sales: 65.4, color: '#2980b9' },
+            { brand: '捷豹', sales: 62.1, color: '#27ae60' },
+            { brand: '路虎', sales: 58.7, color: '#f39c12' },
+            { brand: '保时捷', sales: 55.2, color: '#8e44ad' },
+            { brand: '其他品牌', sales: 210.8, color: '#bdc3c7' }
+        ];
+
+        const svg = document.querySelector('svg');
+        const legend = document.getElementById('legend');
+        const center = 100, radius = 80, innerRadius = 50;
+        let startAngle = 0;
+
+        data.forEach(item => {
+            const angle = (item.sales / 3565.1) * 360;
+            const endAngle = startAngle + angle;
+
+            // 创建扇形路径
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            const startRad = (startAngle - 90) * Math.PI / 180;
+            const endRad = (endAngle - 90) * Math.PI / 180;
+
+            const x1 = center + radius * Math.cos(startRad);
+            const y1 = center + radius * Math.sin(startRad);
+            const x2 = center + radius * Math.cos(endRad);
+            const y2 = center + radius * Math.sin(endRad);
+
+            const x3 = center + innerRadius * Math.cos(endRad);
+            const y3 = center + innerRadius * Math.sin(endRad);
+            const x4 = center + innerRadius * Math.cos(startRad);
+            const y4 = center + innerRadius * Math.sin(startRad);
+
+            const largeFlag = angle > 180 ? 1 : 0;
+            path.setAttribute('d', `
+                M ${center},${center}
+                L ${x1},${y1}
+                A ${radius},${radius} 0 ${largeFlag},1 ${x2},${y2}
+                L ${x3},${y3}
+                A ${innerRadius},${innerRadius} 0 ${largeFlag},0 ${x4},${y4}
+                Z
+            `);
+            path.setAttribute('fill', item.color);
+            svg.appendChild(path);
+
+            // 添加标签（在扇形中间位置）
+            const midAngle = startAngle + angle/2;
+            const midRad = (midAngle - 90) * Math.PI / 180;
+            const labelX = center + (radius + innerRadius)/2 * Math.cos(midRad);
+            const labelY = center + (radius + innerRadius)/2 * Math.sin(midRad);
+
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', labelX);
+            text.setAttribute('y', labelY);
+            text.setAttribute('text-anchor', 'middle');
+            text.setAttribute('dominant-baseline', 'middle');
+            text.setAttribute('fill', 'white');
+            text.setAttribute('font-size', '10');
+            text.textContent = item.sales + '万';
+            svg.appendChild(text);
+
+            // 添加图例
+            const legendItem = document.createElement('div');
+            legendItem.className = 'legend-item';
+            legendItem.innerHTML = `
+                <div class="legend-color" style="background:${item.color}"></div>
+                <span>${item.brand}</span>
+            `;
+            legend.appendChild(legendItem);
+
+            startAngle = endAngle;
+        });
+    </script>
+</body>
+</html>

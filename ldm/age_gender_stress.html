@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>年龄性别学业压力分析</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        body {
+            background-color: #f5f7fa;
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        .chart-container {
+            box-shadow: 0 4px 12px 0 rgba(0,0,0,0.1);
+            border-radius: 8px;
+            background: white;
+            padding: 15px;
+            margin: 0 auto;
+            width: 900px;
+            height: 500px;
+        }
+    </style>
+</head>
+<body>
+    <div id="chart" class="chart-container"></div>
+
+    <script>
+        // 安全解析JSON数据
+        try {
+            var ages = JSON.parse('{{ ages|tojson|safe }}');
+            var maleStress = JSON.parse('{{ male_stress|tojson|safe }}');
+            var femaleStress = JSON.parse('{{ female_stress|tojson|safe }}');
+
+            // 初始化图表
+            var chart = echarts.init(document.getElementById('chart'));
+
+            // 配置项
+            var option = {
+                title: {
+                    text: '各个年龄，不同性别的平均学业压力',
+                    left: 'center'
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    formatter: '年龄: {b0}<br/>平均压力: {c0}'
+                },
+                legend: {
+                    data: ['男', '女'],
+                    right: 10
+                },
+                xAxis: {
+                    type: 'category',
+                    data: ages,
+                    name: '年龄',
+                    axisLabel: {
+                        rotate: 30
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '平均学业压力',
+                    min: 0,
+                    max: 5
+                },
+                series: [
+                    {
+                        name: '男',
+                        type: 'bar',
+                        data: maleStress,
+                        itemStyle: {
+                            color: '#5470c6'
+                        },
+                        label: {
+                            show: true,
+                            position: 'top'
+                        },
+                        barGap: '60%'
+                    },
+                    {
+                        name: '女',
+                        type: 'bar',
+                        data: femaleStress,
+                        itemStyle: {
+                            color: '#ee6666'
+                        },
+                        label: {
+                            show: true,
+                            position: 'top'
+                        },
+                        barGap: '60%'
+                    }
+                ]
+            };
+
+            chart.setOption(option);
+            window.addEventListener('resize', function() {
+                chart.resize();
+            });
+
+        } catch (error) {
+            console.error('数据加载错误:', error);
+            document.getElementById('chart').innerHTML =
+                '<div style="color:red;text-align:center;padding-top:200px">图表数据加载失败</div>';
+        }
+    </script>
+</body>
+</html>

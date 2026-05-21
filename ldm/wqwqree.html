@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>睡眠与学业压力分析大屏</title>
+    <script type="text/javascript" src="https://assets.pyecharts.org/assets/v5/echarts.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: "Microsoft YaHei", sans-serif;
+            background-color: #f0f2f5;
+        }
+        .dashboard {
+            width: 100%;
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(to right, #1e5799, #207cca);
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 32px;
+        }
+        .header p {
+            margin: 10px 0 0;
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            margin: 0 -10px 20px;
+        }
+        .col {
+            flex: 1;
+            min-width: 400px;
+            padding: 0 10px;
+            margin-bottom: 20px;
+        }
+        .chart-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            height: 500px;
+        }
+        .chart-title {
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 15px;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <h1>睡眠时长与学业压力关联分析</h1>
+            <p>基于印度城市学生数据的综合可视化分析</p>
+        </div>
+
+        <div class="row">
+            <div class="col">
+                <div class="chart-container">
+                    <div class="chart-title">睡眠时长小于5小时的前6个城市</div>
+                    <div id="sleep-less-5" style="width:100%; height:450px;"></div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="chart-container">
+                    <div class="chart-title">睡眠时长超过8小时的前6个城市</div>
+                    <div id="sleep-more-8" style="width:100%; height:450px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col">
+                <div class="chart-container">
+                    <div class="chart-title">学业压力最高(5级)的前6个城市</div>
+                    <div id="stress-high" style="width:100%; height:450px;"></div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="chart-container">
+                    <div class="chart-title">学业压力最低(1级)的前6个城市</div>
+                    <div id="stress-low" style="width:100%; height:450px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col" style="flex: 2;">
+                <div class="chart-container">
+                    <div class="chart-title">各年龄段不同性别的平均学业压力</div>
+                    <div id="stress-by-age-gender" style="width:100%; height:450px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>数据可视化分析大屏 © 2023 | 数据来源: 印度学生睡眠与压力调查</p>
+        </div>
+    </div>
+
+    <script>
+        // 睡眠时长小于5小时的城市
+        var chart1 = echarts.init(document.getElementById('sleep-less-5'), 'white', {renderer: 'canvas'});
+        var option1 = {
+            "animation": true,
+            "color": ["#FF6F61"],
+            "series": [{
+                "type": "bar",
+                "name": "小于5小时的总人数",
+                "data": [515, 404, 394, 355, 343, 330],
+                "itemStyle": {
+                    "color": new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                        {offset: 0, color: '#FF6F61'},
+                        {offset: 1, color: '#FFD700'}
+                    ])
+                },
+                "label": {"show": true}
+            }],
+            "legend": {"show": true},
+            "tooltip": {"show": true},
+            "xAxis": [{
+                "name": "城市",
+                "data": ["Kalyan", "Srinagar", "Vasai-Virar", "Thane", "Hyderabad", "Kolkata"],
+                "axisLabel": {"rotate": -15}
+            }],
+            "yAxis": [{"name": "小于5小时的总人数"}],
+            "title": {"show": false}
+        };
+        chart1.setOption(option1);
+
+        // 睡眠时长超过8小时的城市
+        var chart2 = echarts.init(document.getElementById('sleep-more-8'), 'white', {renderer: 'canvas'});
+        var option2 = {
+            "animation": true,
+            "color": ["#6A5ACD"],
+            "series": [{
+                "type": "bar",
+                "name": "超过8小时的总人数",
+                "data": [303, 300, 294, 293, 276, 258],
+                "itemStyle": {
+                    "color": new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                        {offset: 0, color: '#6A5ACD'},
+                        {offset: 1, color: '#9370DB'}
+                    ])
+                },
+                "label": {"show": true}
+            }],
+            "legend": {"show": true},
+            "tooltip": {"show": true},
+            "xAxis": [{
+                "name": "城市",
+                "data": ["Kalyan", "Hyderabad", "Srinagar", "Vasai-Virar", "Lucknow", "Ludhiana"],
+                "axisLabel": {"rotate": -15}
+            }],
+            "yAxis": [{"name": "超过8小时的总人数"}],
+            "title": {"show": false}
+        };
+        chart2.setOption(option2);
+
+        // 学业压力最高(5级)的城市
+        var chart3 = echarts.init(document.getElementById('stress-high'), 'white', {renderer: 'canvas'});
+        var option3 = {
+            "animation": true,
+            "series": [{
+                "type": "bar",
+                "name": "压力为5的总人数",
+                "data": [348, 313, 305, 279, 273, 271],
+                "itemStyle": {"color": "#EE6666"},
+                "label": {"show": true, "formatter": "{value} 人"}
+            }],
+            "legend": {"show": false},
+            "tooltip": {"show": true},
+            "xAxis": [{
+                "name": "城市",
+                "data": ["Kalyan", "Vasai-Virar", "Hyderabad", "Srinagar", "Chennai", "Lucknow"],
+                "axisLabel": {"rotate": -15}
+            }],
+            "yAxis": [{"name": "压力为5的总人数"}],
+            "title": {"show": false}
+        };
+        chart3.setOption(option3);
+
+        // 学业压力最低(1级)的城市
+        var chart4 = echarts.init(document.getElementById('stress-low'), 'white', {renderer: 'canvas'});
+        var option4 = {
+            "animation": true,
+            "series": [{
+                "type": "bar",
+                "name": "压力为1的总人数",
+                "data": [301, 249, 245, 238, 230, 212],
+                "itemStyle": {"color": "#91CC75"},
+                "label": {"show": true}
+            }],
+            "legend": {"show": true},
+            "tooltip": {"show": true},
+            "xAxis": [{
+                "name": "城市",
+                "data": ["Kalyan", "Agra", "Srinagar", "Thane", "Jaipur", "Surat"],
+                "axisLabel": {"rotate": -15}
+            }],
+            "yAxis": [{"name": "压力为1的总人数"}],
+            "title": {"show": false}
+        };
+        chart4.setOption(option4);
+
+        // 各年龄段不同性别的平均学业压力
+        var chart5 = echarts.init(document.getElementById('stress-by-age-gender'), 'white', {renderer: 'canvas'});
+        var option5 = {
+            "animation": true,
+            "series": [
+                {
+                    "type": "bar",
+                    "name": "男",
+                    "data": [3.52, 3.31, 3.28, 3.02, 2.85, 2.95, 3.15, 3.17, 3.21, 3.27, 3.25, 3.10, 3.01, 2.92, 3.14, 2.95, 2.67],
+                    "itemStyle": {"color": "#5470C6"}
+                },
+                {
+                    "type": "bar",
+                    "name": "女",
+                    "data": [3.52, 3.29, 3.38, 3.12, 2.96, 3.02, 3.18, 3.16, 3.21, 3.28, 3.37, 3.13, 3.08, 3.06, 3.21, 2.95, 2.86],
+                    "itemStyle": {"color": "#EA7CCC"}
+                }
+            ],
+            "legend": {"show": true},
+            "tooltip": {"show": true},
+            "xAxis": [{
+                "name": "年龄",
+                "data": ["18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34"]
+            }],
+            "yAxis": [{"name": "平均学业压力"}],
+            "title": {"show": false}
+        };
+        chart5.setOption(option5);
+
+        // 响应式调整
+        window.addEventListener('resize', function() {
+            chart1.resize();
+            chart2.resize();
+            chart3.resize();
+            chart4.resize();
+            chart5.resize();
+        });
+    </script>
+</body>
+</html>
